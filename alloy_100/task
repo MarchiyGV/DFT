@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=90
+#SBATCH --job-name=alloy_100
+
+module purge
+module load intel libraries/mkl intel-mpich/scalapack intel/mpich
+
+mpirun --bind-to core -np 90 pw.x -inp base.in > base.out
