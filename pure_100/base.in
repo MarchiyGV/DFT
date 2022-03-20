@@ -1,7 +1,9 @@
 &CONTROL
+   max_seconds = 216000
+   calculation = 'relax'
    restart_mode = 'restart'
    verbosity        = 'high'
-   etot_conv_thr    = 2.4e-3  
+   etot_conv_thr    = 2.0e-4 
    forc_conv_thr    = 1.0e-4  
    tstress          = .true.
    tprnfor          = .true.
@@ -21,7 +23,7 @@
 /
 &ELECTRONS
    electron_maxstep = 120
-   conv_thr         = 7e-6
+   conv_thr         = 4e-9
    mixing_mode      = 'local-TF'
 /
 &IONS
