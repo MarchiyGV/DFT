@@ -1,0 +1,39 @@
+LAMMPS (29 Sep 2021 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (../comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+# INITIALIZATION
+clear
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (../comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+variable self index mu
+
+units metal
+atom_style atomic
+boundary p p p
+variable name index pure_100 #should be selected by user
+variable structure_name_1 index initial.dat #should be selected by user
+variable structure_name_2 index final.dat #should be selected by user
+variable input index ${self} #[.txt] should be selected by user
+variable input index mu 
+
+
+
+variable pot_path index potentials
+variable thermo_output index thermo_output
+variable dump index dump
+variable structure_1 index ${name}/${structure_name_1}
+variable structure_1 index pure_100/${structure_name_1}
+variable structure_1 index pure_100/initial.dat
+variable structure_2 index ${name}/${structure_name_2}
+variable structure_2 index pure_100/${structure_name_2}
+variable structure_2 index pure_100/final.dat
+variable path index ${name}
+variable path index pure_100
+
+
+shell mkdir ${path}/logs
+shell mkdir pure_100/logs
+WARNING: Shell command 'mkdir' failed with error 'No such file or directory' (../input.cpp:1213)
+log ${path}/logs/${self}.log
+log pure_100/logs/${self}.log
+log pure_100/logs/mu.log

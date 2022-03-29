@@ -1,0 +1,314 @@
+shell rm log.lammps
+
+variable thermo_step equal 10
+variable dump_step equal 10
+include minimization_params.txt
+# ---------- Setup Variables ---------------------
+variable etol equal 1.0e-25
+variable ftol equal 1.0e-25
+variable maxiter equal 50000
+variable maxeval equal 100000
+variable counter equal 0
+
+print " "
+ 
+print "%%%%%%%%%%%%%%%%%%%%%%%%%"
+%%%%%%%%%%%%%%%%%%%%%%%%%
+print "----------input----------"
+----------input----------
+include ${path}/${input}.txt
+include dilute_100/${input}.txt
+include dilute_100/mu.txt
+### --- STGB_210 --- ###
+
+### --- minimisation stats (optional params) --- ###
+#variable etol equal 1.0e-25
+#variable ftol equal 1.0e-25
+#variable maxiter equal 5000
+#variable maxeval equal 10000
+
+### --- common stats --- ###
+
+variable potname index GB_potential_AgNi.txt
+variable type index alloy
+shell cat ${path}/${input}.txt
+shell cat dilute_100/${input}.txt
+shell cat dilute_100/mu.txt
+print " "
+ 
+print "%%%%%%%%%%%%%%%%%%%%%%%%%"
+%%%%%%%%%%%%%%%%%%%%%%%%%
+print " "
+ 
+variable dump_path index ${path}/${dump}/${self}
+variable dump_path index dilute_100/${dump}/${self}
+variable dump_path index dilute_100/dump/${self}
+variable dump_path index dilute_100/dump/mu
+shell mkdir ${path}/${dump}
+shell mkdir dilute_100/${dump}
+shell mkdir dilute_100/dump
+WARNING: Shell command 'mkdir' failed with error 'File exists' (../input.cpp:1213)
+shell mkdir ${dump_path}
+shell mkdir dilute_100/dump/mu
+WARNING: Shell command 'mkdir' failed with error 'File exists' (../input.cpp:1213)
+# ATOMS DEFINITION
+read_data ${structure_1}
+read_data dilute_100/initial.dat
+Reading data file ...
+  orthogonal box = (0.0000000 0.0000000 0.0000000) to (11.767765 11.767765 38.321067)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  80 atoms
+  read_data CPU = 0.001 seconds
+######################################
+# DEFINE INTERATOMIC POTENTIAL
+
+shell cd ${pot_path}
+shell cd potentials
+include ${potname}
+include GB_potential_AgNi.txt
+pair_style eam/fs
+pair_coeff * * Ag-Ni.eam.fs.txt Ag Ni
+neighbor 2.0 bin
+neigh_modify delay 10 check yes
+shell cd ..
+
+######################################
+# DEFINE THERMO AND OUTPUT
+compute eng all pe/atom
+compute eatoms all reduce sum c_eng
+dump 1 all cfg ${dump_step} ${dump_path}/dump_*.cfg mass type xs ys zs c_eng
+dump 1 all cfg 10 ${dump_path}/dump_*.cfg mass type xs ys zs c_eng
+dump 1 all cfg 10 dilute_100/dump/mu/dump_*.cfg mass type xs ys zs c_eng
+if "${type} == pure" then "dump_modify 1 element Ag"
+if "${type} == alloy" then "dump_modify 1 element Ag Ni"
+dump_modify 1 element Ag Ni
+
+thermo ${thermo_step}
+thermo 10
+thermo_style custom step pe lx ly lz press pxx pyy pzz
+
+# ---------- Run Minimization ---------------------
+#reset_timestep 0
+
+
+min_style cg
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+minimize 1e-25 ${ftol} ${maxiter} ${maxeval}
+minimize 1e-25 1e-25 ${maxiter} ${maxeval}
+minimize 1e-25 1e-25 50000 ${maxeval}
+minimize 1e-25 1e-25 50000 100000
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:188)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8.7
+  ghost atom cutoff = 8.7
+  binsize = 4.35, bins = 3 3 9
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair eam/fs, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 5.942 | 5.942 | 5.942 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz 
+       0   -224.43601    11.767765    11.767765    38.321067   -3430.1774   -5145.2145   -5145.2145  -0.10324786 
+      10   -224.43745    11.767765    11.767765    38.321067   -3422.9274    -5134.904    -5134.904    1.0257133 
+      20   -224.43745    11.767765    11.767765    38.321067   -3423.8418   -5135.7624   -5135.7624 -0.00066950652 
+      30   -224.43745    11.767765    11.767765    38.321067   -3423.8412   -5135.7618   -5135.7618 -1.751006e-07 
+      40   -224.43745    11.767765    11.767765    38.321067   -3423.8412   -5135.7618   -5135.7618 1.1677707e-10 
+      46   -224.43745    11.767765    11.767765    38.321067   -3423.8412   -5135.7618   -5135.7618 -1.4635366e-11 
+Loop time of 0.0194773 on 1 procs for 46 steps with 80 atoms
+
+93.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     -224.436005328377  -224.437452983344  -224.437452983344
+  Force two-norm initial, final = 0.078571564 4.1612420e-14
+  Force max component initial, final = 0.024441088 1.1658643e-14
+  Final line search alpha, max atom move = 1.0000000 1.1658643e-14
+  Iterations, force evaluations = 46 92
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.017322   | 0.017322   | 0.017322   |   0.0 | 88.94
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.000183   | 0.000183   | 0.000183   |   0.0 |  0.94
+Output  | 0.0015227  | 0.0015227  | 0.0015227  |   0.0 |  7.82
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.0004495  |            |       |  2.31
+
+Nlocal:        80.0000 ave          80 max          80 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        363.000 ave         363 max         363 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        3964.00 ave        3964 max        3964 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3964
+Ave neighs/atom = 49.550000
+Neighbor list builds = 0
+Dangerous builds = 0
+
+variable file_tmp index ${self}_E.txt
+variable file_tmp index mu_E.txt
+fix tmp all print 1 "variable E0 equal $(c_eatoms)" file ${file_tmp} screen yes
+fix tmp all print 1 "variable E0 equal $(c_eatoms)" file mu_E.txt screen yes
+run 0
+variable E0 equal -224.43745298334511062
+Per MPI rank memory allocation (min/avg/max) = 4.817 | 4.817 | 4.817 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz 
+      46   -224.43745    11.767765    11.767765    38.321067   -3423.8412   -5135.7618   -5135.7618 -1.5171675e-11 
+Loop time of 1.389e-06 on 1 procs for 0 steps with 80 atoms
+
+144.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.389e-06  |            |       |100.00
+
+Nlocal:        80.0000 ave          80 max          80 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        363.000 ave         363 max         363 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        3964.00 ave        3964 max        3964 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3964
+Ave neighs/atom = 49.550000
+Neighbor list builds = 0
+Dangerous builds = 0
+variable z0 delete
+include ${file_tmp}
+include mu_E.txt
+# Fix print output for fix tmp
+variable E0 equal -224.43745298334511062
+unfix tmp
+shell rm ${file_tmp}
+shell rm mu_E.txt
+
+delete_atoms group all compress yes
+Deleted 80 atoms, new total = 0
+read_data ${structure_2} add append
+read_data dilute_100/removed_3.dat add append
+Reading data file ...
+  orthogonal box = (0.0000000 0.0000000 0.0000000) to (11.767765 11.767765 38.321067)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  79 atoms
+  read_data CPU = 0.000 seconds
+
+min_style cg
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+minimize 1e-25 ${ftol} ${maxiter} ${maxeval}
+minimize 1e-25 1e-25 ${maxiter} ${maxeval}
+minimize 1e-25 1e-25 50000 ${maxeval}
+minimize 1e-25 1e-25 50000 100000
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:188)
+Per MPI rank memory allocation (min/avg/max) = 5.942 | 5.942 | 5.942 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz 
+      46   -220.94926    11.767765    11.767765    38.321067   -3691.5616   -5358.2868   -5358.2868   -358.11107 
+      50   -220.96252    11.767765    11.767765    38.321067   -3357.2529   -5019.1774   -5019.1774   -33.404002 
+      60    -220.9627    11.767765    11.767765    38.321067   -3330.7427   -4995.6248   -4995.6248  -0.97841351 
+      70    -220.9627    11.767765    11.767765    38.321067    -3329.919   -4994.8592   -4994.8592 -0.038530048 
+      80    -220.9627    11.767765    11.767765    38.321067   -3329.8832   -4994.8245   -4994.8245 -0.00056526963 
+      90    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 -6.4959413e-06 
+     100    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 -7.5421976e-07 
+     110    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 -3.9895669e-08 
+     120    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 -8.477493e-10 
+     128    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 5.8369679e-11 
+Loop time of 0.0296596 on 1 procs for 82 steps with 79 atoms
+
+93.3% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     -220.949260013674  -220.962702581948  -220.962702581948
+  Force two-norm initial, final = 0.26667568 6.5832084e-14
+  Force max component initial, final = 0.066877894 1.6639468e-14
+  Final line search alpha, max atom move = 1.0000000 1.6639468e-14
+  Iterations, force evaluations = 82 164
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.026981   | 0.026981   | 0.026981   |   0.0 | 90.97
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.00027408 | 0.00027408 | 0.00027408 |   0.0 |  0.92
+Output  | 0.0018758  | 0.0018758  | 0.0018758  |   0.0 |  6.32
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.0005285  |            |       |  1.78
+
+Nlocal:        79.0000 ave          79 max          79 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        355.000 ave         355 max         355 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        3882.00 ave        3882 max        3882 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3882
+Ave neighs/atom = 49.139241
+Neighbor list builds = 0
+Dangerous builds = 0
+
+variable file_tmp index ${self}_E.txt
+variable file_tmp index mu_E.txt
+fix tmp all print 1 "variable E equal $(c_eatoms)" file ${file_tmp} screen yes
+fix tmp all print 1 "variable E equal $(c_eatoms)" file mu_E.txt screen yes
+run 0
+variable E equal -220.96270258194940084
+Per MPI rank memory allocation (min/avg/max) = 4.817 | 4.817 | 4.817 Mbytes
+Step PotEng Lx Ly Lz Press Pxx Pyy Pzz 
+     128    -220.9627    11.767765    11.767765    38.321067   -3329.8827    -4994.824    -4994.824 5.5487019e-11 
+Loop time of 1.36e-06 on 1 procs for 0 steps with 79 atoms
+
+147.1% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.36e-06   |            |       |100.00
+
+Nlocal:        79.0000 ave          79 max          79 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        355.000 ave         355 max         355 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        3896.00 ave        3896 max        3896 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3896
+Ave neighs/atom = 49.316456
+Neighbor list builds = 0
+Dangerous builds = 0
+include ${file_tmp}
+include mu_E.txt
+# Fix print output for fix tmp
+variable E equal -220.96270258194940084
+unfix tmp
+shell rm ${file_tmp}
+shell rm mu_E.txt
+
+
+variable mu equal "v_E0-v_E"
+print "!${name} mu ${mu}" append ${self}.out screen yes
+print "!${name} mu ${mu}" append mu.out screen yes
+!dilute_100 mu -3.47475040139599
+print "All done"
+All done
+Total wall time: 0:00:00
