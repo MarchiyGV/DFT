@@ -9,7 +9,7 @@
    tprnfor          = .true.
    pseudo_dir       = '../pseudo'
    outdir = '../out/'
-   prefix = 'dilute_100'
+   prefix = 'dilute_removed_2'
 /
 &SYSTEM
    ecutwfc          = 98

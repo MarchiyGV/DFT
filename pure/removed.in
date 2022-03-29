@@ -9,7 +9,7 @@
    tprnfor          = .true.
    pseudo_dir       = '../pseudo'
    outdir = '../out/'
-   prefix = 'pure_100'
+   prefix = 'pure_removed'
 /
 &SYSTEM
    ecutwfc          = 98
